@@ -1,7 +1,6 @@
+import { FontAwesome, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import { Tabs } from 'expo-router';
 import React from 'react';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Link, Tabs } from 'expo-router';
-import { Pressable } from 'react-native';
 
 
 // You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
@@ -29,7 +28,7 @@ export default function TabLayout() {
         options={{
           title: 'Mapa',
           headerShown: false,
-          tabBarIcon: ({ color }) => <TabBarIcon name="map" color={color} />,
+          tabBarIcon: ({ color }) => <MaterialCommunityIcons size={28} name="pokemon-go" color={color} style={{ marginBottom: -3 }} />,
         }}
       />
       <Tabs.Screen
@@ -37,7 +36,7 @@ export default function TabLayout() {
         options={{
           title: 'Pokédex',
           headerShown: false,
-          tabBarIcon: ({ color }) => <TabBarIcon name="book" color={color} />,
+          tabBarIcon: ({ color }) => <MaterialIcons name="catching-pokemon" color={color} size={28} style={{ marginBottom: -3 }} />,
         }}
       />
     </Tabs>
