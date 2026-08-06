@@ -46,7 +46,7 @@ function RootLayoutNav() {
   return (
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="camera" />
+        <Stack.Screen name="camera" options={{ headerShown: false }} />
       </Stack>
   );
 }
