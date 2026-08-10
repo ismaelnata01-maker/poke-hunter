@@ -1,13 +1,60 @@
-import { FontAwesome } from "@expo/vector-icons";
-import { CameraView, useCameraPermissions } from "expo-camera";
+import { FontAwesome, MaterialIcons } from "@expo/vector-icons";
+import { BarcodeScanningResult, CameraType, CameraView, FlashMode, useCameraPermissions } from "expo-camera";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { captureOwnerStack } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useRef, useState } from "react";
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as MediaLibrary from "expo-media-library";
 
 export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
+  const cameraRef = useRef<CameraView>(null);
+  const [facing, setFacing] = useState<CameraType>("back");
+  const [flash, setFlash] = useState<FlashMode>("off");
+  const [takingPicture, setTakingPicture] = useState(false);
+  const [scanned, setScanned] = useState(false);
+
+  function toggleCameraFacing() {
+    setFacing((oldState) => oldState === "back" ? "front" : "back");
+  }
+
+  function toggleFlash() {
+    setFlash((oldState) => oldState === "off" ? "on" : "off");
+  }
+
+  async function takePicture() {
+    if (!cameraRef.current || takingPicture) return;
+
+    setTakingPicture(true);
+    const mediaLibrary = await MediaLibrary.requestPermissionsAsync();
+
+    if (mediaLibrary.status !== "granted") {
+      Alert.alert("Permissão necessária", "Permita o acesso às fotos para salvar na galeria.",
+      );
+      return;
+    }
+
+    cameraRef.current
+      .takePictureAsync()
+      .then((photo) => {
+        MediaLibrary.saveToLibraryAsync(photo.uri).then(() =>
+          Alert.alert("Foto salva!"),
+        );
+      })
+      .catch((error) => {
+        console.error(error);
+        Alert.alert("Erro", "Não foi possível capturar a foto");
+      })
+      .finally(() => setTakingPicture(false));
+  }
+
+  async function handleBarcodeScanned(result : BarcodeScanningResult){
+    if(scanned) return;
+
+    setScanned(true);
+    Alert.alert("QR Code", result.data);
+  }
 
   if (!permission) {
     return (
@@ -39,7 +86,16 @@ export default function CameraScreen() {
     <View style={styles.container}>
       <StatusBar hidden />
 
-      <CameraView style={styles.camera} />
+      <CameraView 
+        style={styles.camera} 
+        ref={cameraRef} 
+        facing={facing} 
+        flash={flash} 
+        barcodeScannerSettings={{
+          barcodeTypes: ["qr"]
+        }}
+        onBarcodeScanned={handleBarcodeScanned}
+      />
 
       <SafeAreaView style={styles.overlay} edges={["top"]}>
 
@@ -48,8 +104,8 @@ export default function CameraScreen() {
             <FontAwesome name="close" size={24} color="white" />
           </Pressable>
 
-          <Pressable style={[styles.controlButton]}>
-            <FontAwesome name="bolt" size={24} color="white"></FontAwesome>
+          <Pressable style={[styles.controlButton, flash === "on" && styles.activeControlButton]} onPress={toggleFlash}>
+            <FontAwesome name="bolt" size={24} color={flash === "on" ? "#ffd60a" : "white"}></FontAwesome>
           </Pressable>
         </View>
 
@@ -59,21 +115,23 @@ export default function CameraScreen() {
           </View>
 
           <View style={styles.cameraControls}>
-            <View style={styles.sideButton}/>
+            <View style={styles.sideButton} />
 
-            <Pressable style={styles.captureButtonOuter}>
-              <View style={[styles.captureButtonInner]}/>
+            <Pressable style={styles.captureButtonOuter} onPress={takePicture} disabled={takingPicture}>
+              <View style={[styles.captureButtonInner, takingPicture && styles.captureButtonPressed]}>
+                <MaterialIcons name="catching-pokemon" color={"black"} size={takingPicture ? 56 : 64} style={{ marginBottom: -3 }} />
+              </View>
             </Pressable>
 
-            <Pressable style={styles.sideButton}>
+            <Pressable style={styles.sideButton} onPress={toggleCameraFacing}>
               <View style={styles.flipButton}>
-                <FontAwesome name="refresh" size={24} color="white"/>
+                <FontAwesome name="refresh" size={24} color="white" />
               </View>
             </Pressable>
 
           </View>
 
-          <SafeAreaView edges={["bottom"]}/>
+          <SafeAreaView edges={["bottom"]} />
         </View>
 
       </SafeAreaView>
@@ -146,6 +204,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "rgba(0,0,0,0.45)",
   },
+  activeControlButton: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+  },
   bottomArea: {
     paddingTop: 18,
     paddingHorizontal: 24,
@@ -182,6 +243,12 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 32,
     backgroundColor: "white",
+  },
+  captureButtonPressed: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    opacity: 0.7,
   },
   sideButton: {
     width: 52,
