@@ -6,6 +6,8 @@ import { useRef, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as MediaLibrary from "expo-media-library";
+import * as Location from "expo-location"
+import { saveCapturedPokemon } from "@/services/storage";
 
 export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -14,6 +16,7 @@ export default function CameraScreen() {
   const [flash, setFlash] = useState<FlashMode>("off");
   const [takingPicture, setTakingPicture] = useState(false);
   const [scanned, setScanned] = useState(false);
+  const [mode, setMode] = useState<"photo" | "scan">("scan");
 
   function toggleCameraFacing() {
     setFacing((oldState) => oldState === "back" ? "front" : "back");
@@ -53,7 +56,29 @@ export default function CameraScreen() {
     if(scanned) return;
 
     setScanned(true);
-    Alert.alert("QR Code", result.data);
+    
+    const pokemonId = Number(result.data);
+
+    if(!Number.isInteger(pokemonId) || pokemonId <= 0){
+      Alert.alert(
+        "QR Code inválido",
+        "O QR Code deve conter o ID de um pokémon.",
+        [
+          {
+            text: "Tentar novamente",
+            onPress: () => setScanned(false),
+          },
+        ],
+      );
+    }
+
+    const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High});
+    await saveCapturedPokemon(
+      pokemonId,
+      location.coords.latitude,
+      location.coords.longitude
+    );
+
   }
 
   if (!permission) {
@@ -94,7 +119,7 @@ export default function CameraScreen() {
         barcodeScannerSettings={{
           barcodeTypes: ["qr"]
         }}
-        onBarcodeScanned={handleBarcodeScanned}
+        onBarcodeScanned={mode === "scan" && !scanned ? handleBarcodeScanned : undefined}
       />
 
       <SafeAreaView style={styles.overlay} edges={["top"]}>
@@ -109,17 +134,39 @@ export default function CameraScreen() {
           </Pressable>
         </View>
 
+        {
+          mode === "scan" && (
+          <View style={styles.scannerArea}>
+            <View style={styles.scannerFrame}>
+              <View style={[styles.scannerCorner, styles.scannerTopLeft]}/>
+              <View style={[styles.scannerCorner, styles.scannerTopRight]}/>
+              <View style={[styles.scannerCorner, styles.scannerBottomLeft]}/>
+              <View style={[styles.scannerCorner, styles.scannerBottomRight]}/>
+            </View>
+
+            <Text style={styles.scannerText}>
+              Aponte para o QRcode para capturar o pokémon
+            </Text>
+          </View>
+        )}
+
         <View style={styles.bottomArea}>
           <View style={styles.modeContainer}>
-            <Text style={styles.activeMode}>FOTO</Text>
+            <Pressable onPress={() => setMode("scan")}>
+              <Text style={mode === "scan" ? styles.activeMode : styles.inactiveMode}>SCAN</Text>
+            </Pressable>
+
+            <Pressable onPress={() => setMode("photo")}>
+              <Text style={mode === "photo" ? styles.activeMode : styles.inactiveMode}>FOTO</Text>
+            </Pressable>
           </View>
 
           <View style={styles.cameraControls}>
             <View style={styles.sideButton} />
 
-            <Pressable style={styles.captureButtonOuter} onPress={takePicture} disabled={takingPicture}>
+            <Pressable style={styles.captureButtonOuter} onPress={takePicture} disabled={takingPicture || mode === "scan"}>
               <View style={[styles.captureButtonInner, takingPicture && styles.captureButtonPressed]}>
-                <MaterialIcons name="catching-pokemon" color={"black"} size={takingPicture ? 56 : 64} style={{ marginBottom: -3 }} />
+                <MaterialIcons name={mode === "photo" ? "catching-pokemon" : "qr-code-2"} color={"black"} size={takingPicture ? 56 : 64} style={{ marginBottom: -3 }}/>
               </View>
             </Pressable>
 
@@ -224,6 +271,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "semibold",
   },
+  inactiveMode:{
+    color: "#a3a3a3",
+    fontSize: 13,
+    fontWeight: "semibold",
+  },
   cameraControls: {
     flexDirection: "row",
     alignItems: "center",
@@ -263,5 +315,56 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: 22,
     backgroundColor: "rgba(35,35,35,0.9)",
+  },
+  scannerArea:{
+    alignItems: "center",
+  },
+  scannerFrame:{
+    width: 240,
+    height: 240,
+    position: "relative",
+  },
+  scannerCorner:{
+    position: "absolute",
+    width: 45,
+    height: 45,
+    borderColor: "white",
+  },
+  scannerTopLeft:{
+    top: 0,
+    left: 0,
+    borderTopWidth: 4,
+    borderLeftWidth: 4,
+    borderTopLeftRadius: 12,
+  },
+  scannerTopRight:{
+    top: 0,
+    right: 0,
+    borderTopWidth: 4,
+    borderRightWidth: 4,
+    borderTopRightRadius: 12,
+  },
+  scannerBottomLeft:{
+    bottom: 0,
+    left: 0,
+    borderBottomWidth: 4,
+    borderLeftWidth: 4,
+    borderBottomLeftRadius: 12,
+  },
+  scannerBottomRight:{
+    bottom: 0,
+    right: 0,
+    borderBottomWidth: 4,
+    borderRightWidth: 4,
+    borderBottomRightRadius: 12,
+  },
+  scannerText:{
+    marginTop: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 18,
+    color: "white",
+    fontSize: 14,
+    backgroundColor: "rgba(0,0,0,0.55)"
   },
 });
