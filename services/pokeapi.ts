@@ -7,6 +7,18 @@ interface PokemonAPIResponse{
     results: PokemonAPIItem[]
 }
 
+interface PokemonAPIDetailResponsse{
+    id: number;
+    name: string;
+    sprites:{
+        other:{
+            "official-artwork":{
+                front_default: string | null;
+            };
+        };
+    };
+}
+
 interface PokemonAPIItem{
     name: string;
     url: string;
@@ -46,4 +58,20 @@ export async function getPokemonList(limit = 20, offset = 0){
         pokemonList,
         hasNextPage: Boolean(data.next),
     } as PokemonPage;
+}
+
+export async function getPokemon(id:string) {
+    const response = await fetch(`${API_URL}/${id}`);
+
+    if(!response.ok){
+        throw new Error("Não foi possível carregar o pokémon.");
+    }
+
+    const data = (await response.json()) as PokemonAPIDetailResponsse;
+
+    return{
+        id: data.id,
+        name: data.name,
+        image: data.sprites.other["official-artwork"].front_default,
+    } as Pokemon;
 }
