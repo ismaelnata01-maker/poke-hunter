@@ -37,6 +37,6 @@ export async function saveCapturedPokemon(id:number, latitude: number, longitude
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(storedPokemon));
 }
 
-export async function clearCaptuyredPokemon() {
+export async function clearCapturedPokemon() {
     await AsyncStorage.removeItem(STORAGE_KEY);    
 }
